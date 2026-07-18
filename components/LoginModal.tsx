@@ -9,9 +9,10 @@ interface LoginModalProps {
   onClose: () => void;
   onSendOTP: (phone: string, name?: string, birthday?: string) => Promise<any>;
   onVerifyOTP: (phone: string, code: string) => Promise<any>;
+  onGoogleLogin?: () => Promise<any>;
 }
 
-export default function LoginModal({ isOpen, onClose, onSendOTP, onVerifyOTP }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSendOTP, onVerifyOTP, onGoogleLogin }: LoginModalProps) {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -201,6 +202,42 @@ export default function LoginModal({ isOpen, onClose, onSendOTP, onVerifyOTP }: 
             >
               {loading ? 'Отправка...' : 'Отправить СМС с кодом'}
             </button>
+
+            {onGoogleLogin && (
+              <>
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-gray-200"></div>
+                  <span className="flex-shrink mx-4 text-gray-400 text-[10px] font-black uppercase tracking-wider">или</span>
+                  <div className="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (onGoogleLogin) {
+                      setLoading(true);
+                      try {
+                        await onGoogleLogin();
+                        onClose();
+                      } catch (err: any) {
+                        toast.error(err.message || 'Ошибка авторизации Google');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
+                  }}
+                  className="w-full bg-white hover:bg-gray-50 text-brand-dark border border-gray-200 font-bold py-4 rounded-2xl text-center shadow-sm transition-all text-xs uppercase tracking-wider flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.478 0-6.3-2.823-6.3-6.3s2.822-6.3 6.3-6.3c1.63 0 3.11.624 4.228 1.636l3.204-3.204C19.23 2.54 15.9 1.3 12.24 1.3 6.082 1.3 1.1 6.282 1.1 12.44s4.982 11.14 11.14 11.14c6.31 0 10.5-4.43 10.5-10.7 0-.72-.064-1.408-.186-2.072H12.24z"
+                    />
+                  </svg>
+                  <span>Войти через Google</span>
+                </button>
+              </>
+            )}
           </form>
         ) : (
           /* Step 2 Form */

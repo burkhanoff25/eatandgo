@@ -55,9 +55,9 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
         </div>
 
         {/* Brand Name */}
-        <h1 className="font-display font-black text-3xl md:text-4xl text-white tracking-wider mb-2">
+        <div className="font-display font-black text-3xl md:text-4xl text-white tracking-wider mb-2">
           EAT & GO
-        </h1>
+        </div>
         <p className="font-body text-brand-green font-semibold tracking-widest text-sm mb-8 uppercase">
           Сысерть
         </p>

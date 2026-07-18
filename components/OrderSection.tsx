@@ -123,7 +123,7 @@ export default function OrderSection({
   const finalTotal = Math.max(0, cartTotal - (useBonuses ? bonusesToUse : 0));
 
   return (
-    <section id="order" className="py-24 bg-brand-dark text-white relative">
+    <section id="order" className="py-24 bg-brand-dark text-white relative scroll-mt-20">
       {/* Decorative Blob */}
       <div className="absolute top-1/4 right-[10%] w-[350px] h-[350px] bg-primary-red/5 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -196,7 +196,7 @@ export default function OrderSection({
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
                           {cartItem.item.image.startsWith('http') ? (
-                            <img src={cartItem.item.image} alt={cartItem.item.name} className="w-full h-full object-cover" />
+                            <img src={cartItem.item.image} alt={cartItem.item.name} loading="lazy" className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-xl">{cartItem.item.image}</span>
                           )}

@@ -8,11 +8,32 @@ import { useOrders } from '../../hooks/useOrders';
 import { Order } from '../../types';
 
 export default function ProfilePage() {
-  const { user, logout, getTransactions, loading } = useBonus();
+  const { user, logout, getTransactions, loading, updateProfile } = useBonus();
   const { fetchOrders, orders } = useOrders();
   const [history, setHistory] = useState<any[]>([]);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  
+  const [newPhone, setNewPhone] = useState('');
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  const handleSavePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPhone.length < 10) {
+      alert('Пожалуйста, введите корректный номер телефона');
+      return;
+    }
+    setIsSavingPhone(true);
+    try {
+      if (updateProfile) {
+        await updateProfile({ phone: newPhone });
+      }
+    } catch (e: any) {
+      alert(e.message || 'Ошибка обновления профиля');
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -136,9 +157,49 @@ export default function ProfilePage() {
                     {user.level}
                   </span>
                   <h2 className="font-display font-black text-2xl mt-4">{user.name || 'Гость'}</h2>
-                  <p className="font-body text-xs text-white/50 font-medium flex items-center mt-1">
-                    <Phone className="w-3.5 h-3.5 mr-1.5" /> {user.phone}
-                  </p>
+                  {user.phone ? (
+                    <p className="font-body text-xs text-white/50 font-medium flex items-center mt-1">
+                      <Phone className="w-3.5 h-3.5 mr-1.5" /> {user.phone}
+                    </p>
+                  ) : (
+                    <form onSubmit={handleSavePhone} className="mt-3 space-y-2">
+                      <p className="text-[10px] text-brand-yellow font-black uppercase tracking-wider block">
+                        ⚠️ Требуется привязать телефон
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          required
+                          value={newPhone}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const num = val.replace(/\D/g, '');
+                            let formatted = '';
+                            if (num.startsWith('7') || num.startsWith('8')) {
+                              formatted = '+7 ';
+                              const rem = num.substring(1);
+                              if (rem.length > 0) formatted += '(' + rem.substring(0, 3);
+                              if (rem.length >= 4) formatted += ') ' + rem.substring(3, 6);
+                              if (rem.length >= 7) formatted += '-' + rem.substring(6, 8);
+                              if (rem.length >= 9) formatted += '-' + rem.substring(8, 10);
+                            } else {
+                              if (num.length > 0) formatted = '+' + num.substring(0, 15);
+                            }
+                            setNewPhone(formatted);
+                          }}
+                          placeholder="+7 (999) 999-99-99"
+                          className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none text-white w-full placeholder-white/30"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSavingPhone}
+                          className="bg-brand-yellow hover:bg-yellow-500 text-brand-dark font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                        >
+                          {isSavingPhone ? 'Сохранение...' : 'Привязать'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                   {user.birthday && (
                     <p className="font-body text-xs text-white/50 font-medium flex items-center mt-1">
                       <Calendar className="w-3.5 h-3.5 mr-1.5" /> ДР: {new Date(user.birthday).toLocaleDateString('ru-RU')}

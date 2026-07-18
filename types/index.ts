@@ -37,7 +37,8 @@ export interface Order {
 
 export interface UserProfile {
   id: string;
-  phone: string;
+  phone: string | null;
+  email?: string | null;
   name: string | null;
   birthday: string | null;
   bonus_balance: number;

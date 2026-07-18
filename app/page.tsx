@@ -20,7 +20,7 @@ export default function Home() {
   const [loginOpen, setLoginOpen] = useState(false);
 
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, cartCount, cartTotal } = useCart();
-  const { user, sendOTP, login, logout, processOrderLoyalty, getTransactions } = useBonus();
+  const { user, sendOTP, login, logout, processOrderLoyalty, getTransactions, signInWithGoogle } = useBonus();
   const { submitOrder } = useOrders();
 
   const handleAddToCart = (item: any) => {
@@ -94,6 +94,7 @@ export default function Home() {
         onClose={() => setLoginOpen(false)}
         onSendOTP={sendOTP}
         onVerifyOTP={login}
+        onGoogleLogin={signInWithGoogle}
       />
     </div>
   );

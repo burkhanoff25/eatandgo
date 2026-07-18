@@ -50,7 +50,7 @@ export default function BonusSection({
   const nextLevel = getNextLevelTarget();
 
   return (
-    <section id="bonus" className="py-24 bg-brand-yellow text-brand-dark relative overflow-hidden">
+    <section id="bonus" className="py-24 bg-brand-yellow text-brand-dark relative overflow-hidden scroll-mt-20">
       {/* Background design accents */}
       <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-white/10 rounded-full blur-[100px] pointer-events-none"></div>
 

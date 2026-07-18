@@ -48,7 +48,7 @@ export default function ReviewsSection() {
   const strokeDashoffset = circumference - (96 / 100) * circumference;
 
   return (
-    <section id="reviews" className="py-24 bg-white">
+    <section id="reviews" className="py-24 bg-white scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

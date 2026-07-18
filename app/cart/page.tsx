@@ -83,6 +83,7 @@ export default function CartPage() {
                           <img
                             src={cartItem.item.image}
                             alt={cartItem.item.name}
+                            loading="lazy"
                             className="w-full h-full object-cover"
                           />
                         ) : (

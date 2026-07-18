@@ -7,7 +7,7 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      className="relative pt-36 pb-24 md:pt-48 md:pb-36 bg-gradient-to-b from-brand-dark via-[#1a0809] to-brand-dark overflow-hidden flex items-center min-h-[90vh]"
+      className="relative pt-36 pb-12 md:pt-48 md:pb-16 bg-gradient-to-b from-brand-dark via-[#1a0809] to-brand-dark overflow-hidden flex items-center min-h-[80vh]"
     >
       {/* Decorative Glow Blobs */}
       <div className="absolute top-1/4 left-[-10%] w-96 h-96 bg-primary-red/15 rounded-full blur-[120px] pointer-events-none"></div>

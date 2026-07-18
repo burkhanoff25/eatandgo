@@ -37,6 +37,28 @@ export const useBonus = () => {
             .single();
           if (data && !error) {
             setUser(data);
+          } else {
+            // Profile does not exist, create it (e.g. Google OAuth sign-in)
+            const metadata = session.user.user_metadata;
+            const newProfile: UserProfile = {
+              id: session.user.id,
+              phone: session.user.phone || null,
+              email: session.user.email || null,
+              name: metadata?.full_name || metadata?.name || 'Гость Google',
+              birthday: null,
+              bonus_balance: 0,
+              total_spent: 0,
+              level: 'Новичок',
+              created_at: new Date().toISOString()
+            };
+            const { data: inserted, error: insertErr } = await supabase
+              .from('users')
+              .upsert(newProfile)
+              .select()
+              .single();
+            if (!insertErr && inserted) {
+              setUser(inserted);
+            }
           }
         }
       }
@@ -276,6 +298,64 @@ export const useBonus = () => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    if (isOfflineMode) {
+      setLoading(true);
+      const mockGoogleUser: UserProfile = {
+        id: 'google-mock-id-12345',
+        phone: null,
+        email: 'mock.google@gmail.com',
+        name: 'Google Test User',
+        birthday: null,
+        bonus_balance: 150,
+        total_spent: 0,
+        level: 'Новичок',
+        created_at: new Date().toISOString()
+      };
+      
+      const allUsers = localDb.getAll('users');
+      let existingUser = allUsers.find((u: any) => u.email === mockGoogleUser.email);
+      if (!existingUser) {
+        allUsers.push(mockGoogleUser);
+        localDb.saveAll('users', allUsers);
+        existingUser = mockGoogleUser;
+      }
+      
+      setUser(existingUser);
+      localStorage.setItem('eg_current_user', JSON.stringify(existingUser));
+      setLoading(false);
+      return existingUser;
+    } else {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+    }
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    
+    if (isOfflineMode) {
+      const allUsers = localDb.getAll('users');
+      const updatedList = allUsers.map((u: any) => u.id === user.id ? { ...u, ...updates } : u);
+      localDb.saveAll('users', updatedList);
+      setUser(updatedUser as UserProfile);
+      localStorage.setItem('eg_current_user', JSON.stringify(updatedUser));
+    } else {
+      const { error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', user.id);
+      if (error) throw error;
+      setUser(updatedUser as UserProfile);
+    }
+  };
+
   return {
     user,
     loading,
@@ -284,5 +364,7 @@ export const useBonus = () => {
     logout,
     processOrderLoyalty,
     getTransactions,
+    signInWithGoogle,
+    updateProfile,
   };
 };

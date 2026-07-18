@@ -216,7 +216,7 @@ export default function MenuSection({ onAddToCart }: MenuSectionProps) {
     : MENU_ITEMS.filter(item => item.category === activeTab);
 
   return (
-    <section id="menu" className="py-24 bg-[#141414] text-white">
+    <section id="menu" className="pt-12 pb-24 bg-[#141414] text-white scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -262,6 +262,7 @@ export default function MenuSection({ onAddToCart }: MenuSectionProps) {
                   <img
                     src={item.image}
                     alt={item.name}
+                    loading="lazy"
                     className="h-full w-full object-cover rounded-2xl transform group-hover:scale-105 transition-transform duration-500 ease-out"
                   />
                 ) : (
