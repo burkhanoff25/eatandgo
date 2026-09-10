@@ -83,22 +83,20 @@ export default function Hero() {
           <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
             <div className="relative w-76 h-76 sm:w-96 sm:h-96 lg:w-[420px] lg:h-[420px] rounded-full bg-gradient-to-br from-primary-red/15 to-brand-yellow/5 flex items-center justify-center p-6 border border-white/5 shadow-2xl">
               {/* Spinning Dotted Rings */}
-              <div className="absolute inset-0 rounded-full border border-dashed border-white/10 animate-[spin_40s_linear_infinite] pointer-events-none"></div>
+              <div className="absolute inset-0 rounded-full border border-dashed border-white/20 animate-[spin_40s_linear_infinite] pointer-events-none"></div>
               
               {/* Graphic Mock Card */}
-              <div className="relative w-full h-full rounded-full bg-brand-dark/50 overflow-hidden flex flex-col justify-center items-center text-center p-6 border border-white/10 shadow-2xl float-animation">
-                <h3 className="font-display font-black text-xl sm:text-2xl text-white uppercase tracking-wider">E&G SPECIAL</h3>
+              <div className="relative w-full h-full rounded-full bg-brand-dark overflow-hidden border border-white/10 shadow-2xl float-animation flex flex-col justify-end items-center pb-8 sm:pb-12">
+                <div className="absolute inset-0">
+                  <img
+                    src="/eat and go.png"
+                    alt="EAT & GO Logo"
+                    className="w-full h-full object-cover scale-[1.02]"
+                  />
+                </div>
                 
-                <img
-                  src="/photo_2026.jpg"
-                  alt="EAT & GO Logo"
-                  className="w-24 h-24 object-contain mt-3 mb-2 rounded-2xl border border-white/10 shadow-md p-2 bg-white/5"
-                />
-
-                <p className="text-[10px] text-brand-yellow font-bold uppercase tracking-widest mt-1">Свежее Мясо & Специи</p>
-                
-                {/* Floating Tag */}
-                <div className="absolute bottom-10 bg-primary-red text-white text-[10px] font-black font-display px-5 py-2.5 rounded-full uppercase tracking-widest shadow-lg shadow-red-950/40">
+                {/* Blinking Tag */}
+                <div className="relative z-10 bg-primary-red text-white text-[10px] font-black font-display px-5 py-2.5 rounded-full uppercase tracking-widest shadow-lg shadow-red-950/40 animate-bounce">
                   Готово за 5 мин ⚡
                 </div>
               </div>

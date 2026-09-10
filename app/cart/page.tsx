@@ -15,17 +15,53 @@ export default function CartPage() {
   const { submitOrder } = useOrders();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const handleCheckoutOrder = async (name: string, phone: string, comment: string, bonusesUsed: number) => {
+  const [pendingOrder, setPendingOrder] = useState<any>(null);
+
+  const executeOrderSubmission = async (name: string, phone: string, comment: string, bonusesUsed: number, deliveryData: any) => {
     const itemsPayload = cart.map(i => ({
       name: i.item.name,
       price: i.item.price,
       qty: i.quantity,
     }));
 
-    await submitOrder(name, phone, itemsPayload, cartTotal, comment, user?.id || null, bonusesUsed);
+    await submitOrder(name, phone, itemsPayload, cartTotal, comment, user?.id || null, bonusesUsed, deliveryData);
 
     if (user) {
       await processOrderLoyalty(cartTotal, bonusesUsed);
+    }
+  };
+
+  const handleCheckoutOrder = async (name: string, phone: string, comment: string, bonusesUsed: number, deliveryData: any) => {
+    // Require OTP for ALL delivery orders or if user is not logged in yet
+    if (deliveryData?.type === 'delivery' || !user) {
+      setPendingOrder({ name, phone, comment, bonusesUsed, deliveryData });
+      try {
+        await sendOTP(phone, name);
+        setLoginOpen(true);
+      } catch (err: any) {
+        console.error('Ошибка отправки СМС:', err);
+      }
+      return;
+    }
+
+    // Direct submit for pickup if logged in
+    await executeOrderSubmission(name, phone, comment, bonusesUsed, deliveryData);
+    clearCart();
+  };
+
+  const handleVerifyOTP = async (phone: string, code: string) => {
+    await login(phone, code);
+    
+    if (pendingOrder) {
+      await executeOrderSubmission(
+        pendingOrder.name,
+        pendingOrder.phone,
+        pendingOrder.comment,
+        pendingOrder.bonusesUsed,
+        pendingOrder.deliveryData
+      );
+      setPendingOrder(null);
+      clearCart();
     }
   };
 
@@ -155,7 +191,7 @@ export default function CartPage() {
         isOpen={loginOpen}
         onClose={() => setLoginOpen(false)}
         onSendOTP={sendOTP}
-        onVerifyOTP={login}
+        onVerifyOTP={handleVerifyOTP}
       />
     </div>
   );

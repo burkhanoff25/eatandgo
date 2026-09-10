@@ -220,15 +220,15 @@ export default function MenuSection({ onAddToCart }: MenuSectionProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="text-brand-green text-[10px] font-black uppercase tracking-widest bg-brand-green/10 border border-brand-green/20 px-4 py-2 rounded-full">
+        <div className="text-center max-w-4xl mx-auto mb-16 space-y-5">
+          <span className="text-brand-green text-[10px] font-black uppercase tracking-widest bg-brand-green/10 border border-brand-green/20 px-4 py-2 rounded-full inline-block mb-2">
             Наше меню
           </span>
-          <h2 className="font-display font-black text-3xl sm:text-4xl text-white uppercase tracking-tight">
-            🔥 ПОЗИЦИИ ДОСТУПНЫЕ ДЛЯ ДОСТАВКИ
+          <h2 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl text-white uppercase tracking-tight leading-tight">
+            🔥 ПОЗИЦИИ, ДОСТУПНЫЕ ДЛЯ ДОСТАВКИ
           </h2>
-          <p className="font-body text-zinc-400 text-sm sm:text-base">
-            Только свежие ингредиенты и наши фирменные соусы. Вкус в каждом шаге!
+          <p className="font-body text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto">
+            Только свежие ингредиенты и наши фирменные соусы. Вкус в каждом кусочке!
           </p>
         </div>
 

@@ -36,9 +36,11 @@ export default function Navbar({ cartCount, user, onLogout, onOpenLogin }: Navba
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2 group">
-              <span className="font-display font-black text-2xl tracking-widest text-white group-hover:scale-105 transition-transform duration-300">
-                EAT <span className="text-brand-yellow font-light group-hover:text-primary-red transition-colors duration-300">&</span> GO
-              </span>
+              <img 
+                src="/eat and go 2.png" 
+                alt="Eat & Go Logo" 
+                className="h-8 sm:h-10 w-auto group-hover:scale-105 transition-transform duration-300 object-contain"
+              />
             </Link>
 
             {/* Desktop Navigation */}

@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     "кафе Сысерть",
     "заказать еду Сысерть"
   ],
+  icons: {
+    icon: '/EAT.ico',
+  },
   alternates: {
     canonical: "https://eatandgo.vercel.app",
   },

@@ -28,11 +28,20 @@ export interface Order {
   customer_phone: string;
   items: OrderItem[];
   total: number;
-  status: 'new' | 'cooking' | 'ready' | 'done';
+  status: 'new' | 'cooking' | 'ready' | 'done' | 'accepted' | 'preparing' | 'handed_to_courier' | 'on_the_way' | 'delivered';
   comment?: string;
   user_id?: string | null;
   bonuses_used?: number;
   created_at: string;
+  
+  // Delivery fields
+  delivery_type?: 'pickup' | 'delivery';
+  delivery_address_text?: string;
+  delivery_entrance?: string;
+  delivery_floor?: string;
+  delivery_apartment?: string;
+  delivery_fee?: number;
+  courier_name?: string | null;
 }
 
 export interface UserProfile {

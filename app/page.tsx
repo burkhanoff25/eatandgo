@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LoadingScreen from '../components/LoadingScreen';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
@@ -44,8 +44,21 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('siteLoaded') === 'true') {
+      setSiteLoaded(true);
+    }
+  }, []);
+
+  const handleLoadingFinished = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('siteLoaded', 'true');
+    }
+    setSiteLoaded(true);
+  };
+
   if (!siteLoaded) {
-    return <LoadingScreen onFinished={() => setSiteLoaded(true)} />;
+    return <LoadingScreen onFinished={handleLoadingFinished} />;
   }
 
   return (
@@ -82,9 +95,14 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-brand-dark py-8 text-center text-xs font-semibold text-white/50 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 space-y-2">
+        <div className="max-w-7xl mx-auto px-4 space-y-3">
           <p>© {new Date().getFullYear()} EAT & GO. Все права защищены.</p>
-          <p className="text-white/30 text-[10px]">г. Сысерть, Свердловская область</p>
+          <div className="flex items-center justify-center space-x-4">
+            <a href="/privacy" className="hover:text-brand-yellow transition-colors underline decoration-white/20 underline-offset-4">
+              Политика конфиденциальности
+            </a>
+          </div>
+          <p className="text-white/30 text-[10px] pt-2">г. Сысерть, Свердловская область</p>
         </div>
       </footer>
 

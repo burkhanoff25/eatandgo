@@ -13,7 +13,8 @@ export const useOrders = () => {
     total: number,
     comment = '',
     userId?: string | null,
-    bonusesUsed = 0
+    bonusesUsed = 0,
+    deliveryData?: any
   ) => {
     setLoading(true);
     try {
@@ -27,6 +28,14 @@ export const useOrders = () => {
         user_id: userId || null,
         bonuses_used: bonusesUsed,
         created_at: new Date().toISOString(),
+        ...(deliveryData && {
+          delivery_type: deliveryData.type,
+          delivery_address_text: deliveryData.address_text,
+          delivery_entrance: deliveryData.entrance,
+          delivery_floor: deliveryData.floor,
+          delivery_apartment: deliveryData.apartment,
+          delivery_fee: deliveryData.fee,
+        })
       };
 
       if (isOfflineMode) {
@@ -81,7 +90,7 @@ export const useOrders = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: 'new' | 'cooking' | 'ready' | 'done') => {
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     if (isOfflineMode) {
       const localOrders = localDb.getAll('orders');
       const updated = localOrders.map((o: any) => {
@@ -102,6 +111,29 @@ export const useOrders = () => {
         .eq('id', orderId);
       if (error) throw error;
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    }
+  };
+
+  const assignCourier = async (orderId: string, courierName: string) => {
+    if (isOfflineMode) {
+      const localOrders = localDb.getAll('orders');
+      const updated = localOrders.map((o: any) => {
+        if (o.id === orderId) {
+          const updatedOrder = { ...o, courier_name: courierName };
+          localDb.publish('orders-channel', { event: 'UPDATE', new: updatedOrder });
+          return updatedOrder;
+        }
+        return o;
+      });
+      localDb.saveAll('orders', updated);
+      setOrders(updated.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    } else {
+      const { error } = await supabase
+        .from('orders')
+        .update({ courier_name: courierName })
+        .eq('id', orderId);
+      if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, courier_name: courierName } : o));
     }
   };
 
@@ -150,5 +182,6 @@ export const useOrders = () => {
     fetchOrders,
     updateOrderStatus,
     subscribeToOrders,
+    assignCourier,
   };
 };

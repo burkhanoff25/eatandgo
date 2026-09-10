@@ -11,16 +11,16 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    // Animate progress bar over 1.8 seconds
+    // Animate progress bar over 4 seconds
     const interval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           return 100;
         }
-        return prev + 5;
+        return prev + 1;
       });
-    }, 80);
+    }, 40);
 
     return () => clearInterval(interval);
   }, []);
@@ -46,12 +46,14 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
     >
       <div className="flex flex-col items-center max-w-xs w-full px-6 text-center">
         {/* Spinning Circular Logo */}
-        <div className="relative mb-8 w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-brand-green overflow-hidden">
-          <img
-            src="/photo_2026.jpg"
-            alt="EAT & GO Logo"
-            className="w-full h-full object-contain rounded-full p-2 animate-[spin_12s_linear_infinite]"
-          />
+        <div className="relative flex flex-col items-center mb-8">
+          <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-brand-green overflow-hidden">
+            <img
+              src="/eat and go 2.png"
+              alt="EAT & GO Logo"
+              className="w-full h-full object-contain p-2 animate-[spin_12s_linear_infinite]"
+            />
+          </div>
         </div>
 
         {/* Brand Name */}

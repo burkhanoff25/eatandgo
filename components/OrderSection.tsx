@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Truck, Check, AlertCircle, Plus, Minus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CartItem } from '../types';
+import Link from 'next/link';
 
 interface OrderSectionProps {
   cart: CartItem[];
@@ -13,7 +14,7 @@ interface OrderSectionProps {
   onUpdateQuantity: (id: string, qty: number) => void;
   onRemoveFromCart: (id: string) => void;
   onClearCart: () => void;
-  onSubmitOrder: (name: string, phone: string, comment: string, bonusesUsed: number) => Promise<any>;
+  onSubmitOrder: (name: string, phone: string, comment: string, bonusesUsed: number, deliveryData: any) => Promise<any>;
 }
 
 export default function OrderSection({
@@ -30,6 +31,11 @@ export default function OrderSection({
   const [phone, setPhone] = useState('');
   const [comment, setComment] = useState('');
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [addressText, setAddressText] = useState('');
+  const [entrance, setEntrance] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [consentPDN, setConsentPDN] = useState(false);
   const [useBonuses, setUseBonuses] = useState(false);
   const [bonusesToUse, setBonusesToUse] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +83,8 @@ export default function OrderSection({
     setPhone(formatPhoneNumber(raw));
   };
 
-  const maxBonusesAvailable = user ? Math.min(user.bonus_balance, cartTotal) : 0;
+  const deliveryFee = deliveryType === 'delivery' ? 200 : 0;
+  const maxBonusesAvailable = user ? Math.min(user.bonus_balance, cartTotal + deliveryFee) : 0;
 
   const handleBonusToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUseBonuses(e.target.checked);
@@ -94,8 +101,11 @@ export default function OrderSection({
       toast.error('Ваша корзина пуста');
       return;
     }
-    if (!name.trim()) {
-      toast.error('Введите имя');
+
+    // Security: Regex validation for Name (only letters and spaces)
+    const nameRegex = /^[A-Za-zА-Яа-яЁё\s\-]+$/;
+    if (!name.trim() || !nameRegex.test(name)) {
+      toast.error('Введите корректное имя (только буквы)');
       return;
     }
     if (phone.length < 10) {
@@ -103,16 +113,35 @@ export default function OrderSection({
       return;
     }
 
+    if (deliveryType === 'delivery') {
+      // Security: Regex validation for Address (letters, numbers, spaces, basic punctuation)
+      const addressRegex = /^[A-Za-zА-Яа-яЁё0-9\s,.\-\/]+$/;
+      if (!addressText.trim() || !addressRegex.test(addressText)) {
+        toast.error('Введите корректный адрес');
+        return;
+      }
+      if (!consentPDN) {
+        toast.error('Необходимо согласие на обработку персональных данных');
+        return;
+      }
+    }
+
+    // Security: Basic XSS sanitization for comment
+    const safeComment = comment.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
     setIsSubmitting(true);
     try {
-      await onSubmitOrder(name, phone, comment, useBonuses ? bonusesToUse : 0);
-      toast.success('✅ Заказ принят! Мы уже готовим.');
-      setName(user?.name || '');
-      setPhone(user?.phone || '');
-      setComment('');
-      setUseBonuses(false);
-      setBonusesToUse(0);
-      onClearCart();
+      const deliveryData = deliveryType === 'delivery' ? {
+        type: 'delivery',
+        address_text: addressText,
+        entrance,
+        floor,
+        apartment,
+        fee: deliveryFee
+      } : { type: 'pickup' };
+
+      await onSubmitOrder(name, phone, safeComment, useBonuses ? bonusesToUse : 0, deliveryData);
+      // Success toast is handled in the parent page after OTP or direct submission
     } catch (error: any) {
       toast.error(error.message || 'Ошибка оформления заказа');
     } finally {
@@ -120,7 +149,7 @@ export default function OrderSection({
     }
   };
 
-  const finalTotal = Math.max(0, cartTotal - (useBonuses ? bonusesToUse : 0));
+  const finalTotal = Math.max(0, cartTotal + deliveryFee - (useBonuses ? bonusesToUse : 0));
 
   return (
     <section id="order" className="py-24 bg-brand-dark text-white relative scroll-mt-20">
@@ -128,7 +157,7 @@ export default function OrderSection({
       <div className="absolute top-1/4 right-[10%] w-[350px] h-[350px] bg-primary-red/5 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
           {/* Instructions Column */}
           <div className="lg:col-span-5 space-y-8">
@@ -138,10 +167,12 @@ export default function OrderSection({
               </span>
               <h2 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight uppercase leading-tight">
                 🌯 Закажи онлайн, <br />
-                забери без очереди
+                {deliveryType === 'pickup' ? 'забери без очереди' : 'доставим горячим'}
               </h2>
               <p className="font-body text-white/70 leading-relaxed text-sm sm:text-base">
-                Оформи заказ на самовывоз за пару кликов. Мы приготовим всё горячим точно к вашему приходу. Никакого ожидания в очереди!
+                {deliveryType === 'pickup' 
+                  ? 'Оформи заказ на самовывоз за пару кликов. Мы приготовим всё горячим точно к вашему приходу. Никакого ожидания в очереди!'
+                  : 'Мы быстро доставим ваш заказ прямо до двери. Наслаждайтесь любимыми блюдами, не выходя из дома!'}
               </p>
             </div>
 
@@ -166,15 +197,24 @@ export default function OrderSection({
                 <span className="text-[9px] text-white/50 block">Готово через 5-15 мин</span>
               </button>
 
-              {/* Delivery (Disabled) */}
-              <div className="flex flex-col items-center justify-center p-6 rounded-3xl border border-white/5 bg-white/[0.02] text-center opacity-30 select-none relative cursor-not-allowed">
-                <span className="absolute top-3 right-3 bg-white/10 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Скоро
-                </span>
-                <Truck className="w-6 h-6 text-white/40" />
-                <span className="text-xs font-black uppercase tracking-wider text-white/40 block">Доставка</span>
-                <span className="text-[9px] text-white/30 block">В разработке 🔜</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setDeliveryType('delivery')}
+                className={`flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all text-center space-y-3 relative overflow-hidden cursor-pointer ${
+                  deliveryType === 'delivery'
+                    ? 'border-brand-yellow bg-white/5 shadow-lg shadow-brand-yellow/5'
+                    : 'border-white/5 bg-transparent opacity-50 hover:opacity-85'
+                }`}
+              >
+                {deliveryType === 'delivery' && (
+                  <div className="absolute top-3 right-3 bg-brand-yellow text-brand-dark p-0.5 rounded-full">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                )}
+                <Truck className="w-6 h-6 text-brand-yellow" />
+                <span className="text-xs font-black uppercase tracking-wider block">Доставка</span>
+                <span className="text-[9px] text-white/50 block">{deliveryFee} ₽</span>
+              </button>
             </div>
           </div>
 
@@ -268,13 +308,64 @@ export default function OrderSection({
                 </div>
               </div>
 
+              {/* Delivery Address Fields */}
+              {deliveryType === 'delivery' && (
+                <div className="space-y-4 p-5 bg-gray-50 rounded-2xl border border-gray-150">
+                  <h4 className="text-xs font-black text-brand-dark uppercase tracking-wide">Адрес доставки</h4>
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      required
+                      value={addressText}
+                      onChange={e => setAddressText(e.target.value)}
+                      placeholder="Улица и дом (например: ул. Ленина, 15)"
+                      className="w-full bg-white border border-gray-200 focus:border-primary-red p-3.5 rounded-xl outline-none font-body font-semibold transition-all text-xs text-brand-dark"
+                    />
+                    <div className="grid grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        value={entrance}
+                        onChange={e => setEntrance(e.target.value)}
+                        placeholder="Подъезд"
+                        className="w-full bg-white border border-gray-200 focus:border-primary-red p-3.5 rounded-xl outline-none font-body font-semibold transition-all text-xs text-brand-dark"
+                      />
+                      <input
+                        type="text"
+                        value={floor}
+                        onChange={e => setFloor(e.target.value)}
+                        placeholder="Этаж"
+                        className="w-full bg-white border border-gray-200 focus:border-primary-red p-3.5 rounded-xl outline-none font-body font-semibold transition-all text-xs text-brand-dark"
+                      />
+                      <input
+                        type="text"
+                        value={apartment}
+                        onChange={e => setApartment(e.target.value)}
+                        placeholder="Квартира"
+                        className="w-full bg-white border border-gray-200 focus:border-primary-red p-3.5 rounded-xl outline-none font-body font-semibold transition-all text-xs text-brand-dark"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-start space-x-3 mt-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={consentPDN}
+                      onChange={e => setConsentPDN(e.target.checked)}
+                      className="mt-1 w-4 h-4 text-primary-red rounded border-gray-300 focus:ring-primary-red focus:ring-2"
+                    />
+                    <span className="text-[10px] text-gray-500 leading-relaxed">
+                      Я согласен на обработку персональных данных для осуществления доставки в соответствии с <Link href="/privacy" target="_blank" className="text-primary-red hover:underline">Политикой конфиденциальности</Link>.
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {/* Comment */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Комментарий к заказу</label>
                 <textarea
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  placeholder="Например: сделать острее, без лука, заберу через 15 минут..."
+                  placeholder="Например: сделать острее, без лука, позвонить за 10 мин..."
                   rows={2}
                   className="w-full bg-gray-50 border border-gray-200 focus:border-primary-red focus:bg-white p-4 rounded-2xl outline-none font-body font-semibold transition-all text-xs text-brand-dark resize-none"
                 />
@@ -308,6 +399,12 @@ export default function OrderSection({
                     <span>Сумма заказа:</span>
                     <span>{cartTotal} ₽</span>
                   </div>
+                  {deliveryType === 'delivery' && (
+                    <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                      <span>Доставка:</span>
+                      <span>{deliveryFee} ₽</span>
+                    </div>
+                  )}
                   {useBonuses && bonusesToUse > 0 && (
                     <div className="flex justify-between items-center text-xs font-bold text-emerald-600">
                       <span>Списано бонусов:</span>
@@ -331,7 +428,7 @@ export default function OrderSection({
                   disabled={isSubmitting || cartCount === 0}
                   className="w-full bg-primary-red hover:bg-red-750 text-white font-bold py-4.5 px-6 rounded-2xl text-center shadow-xl shadow-red-500/10 transition-all flex items-center justify-center space-x-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none cursor-pointer uppercase tracking-wider text-xs"
                 >
-                  <span>🛍️ Оформить самовывоз</span>
+                  <span>{deliveryType === 'pickup' ? '🛍️ Оформить самовывоз' : '🚀 Оформить доставку'}</span>
                 </button>
               </div>
             </form>
