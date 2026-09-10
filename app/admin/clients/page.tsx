@@ -3,60 +3,24 @@
 import React, { useEffect, useState } from 'react';
 import AdminSidebar from '../../../components/admin/AdminSidebar';
 import { UserProfile } from '../../../types';
-import { isOfflineMode, localDb } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import { Phone, Award, AwardIcon } from 'lucide-react';
-
-const MOCK_CLIENTS: UserProfile[] = [
-  {
-    id: 'c1',
-    phone: '+7 (900) 123-45-67',
-    name: 'Александр Макаров',
-    birthday: '1995-04-12',
-    bonus_balance: 340,
-    total_spent: 5420,
-    level: 'VIP',
-    created_at: '2026-06-01T12:00:00Z'
-  },
-  {
-    id: 'c2',
-    phone: '+7 (950) 765-43-21',
-    name: 'Екатерина Соловьева',
-    birthday: '1998-11-20',
-    bonus_balance: 120,
-    total_spent: 2450,
-    level: 'Постоянный',
-    created_at: '2026-06-15T15:30:00Z'
-  },
-  {
-    id: 'c3',
-    phone: '+7 (912) 000-11-22',
-    name: 'Дмитрий Резнов',
-    birthday: '1990-08-05',
-    bonus_balance: 15,
-    total_spent: 320,
-    level: 'Новичок',
-    created_at: '2026-07-02T09:15:00Z'
-  }
-];
 
 export default function AdminClientsPage() {
   const [clients, setClients] = useState<UserProfile[]>([]);
 
   useEffect(() => {
-    if (isOfflineMode) {
-      // Sync or initialize mock clients in localDb
-      const existing = localDb.getAll('users');
-      if (existing.length === 0) {
-        localDb.saveAll('users', MOCK_CLIENTS);
-        setClients(MOCK_CLIENTS);
-      } else {
-        setClients(existing);
+    const fetchClients = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data && !error) {
+        setClients(data);
       }
-    } else {
-      // Fetch actual supabase records
-      // Fallback to mock if fetch fails
-      setClients(MOCK_CLIENTS);
-    }
+    };
+    fetchClients();
   }, []);
 
   const getTierBadgeColor = (level: string) => {
