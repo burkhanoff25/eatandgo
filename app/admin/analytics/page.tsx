@@ -1,18 +1,146 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminSidebar from '../../../components/admin/AdminSidebar';
 import { TrendingUp, Award, Clock, Users, ArrowUpRight, DollarSign } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
+import { Order } from '../../../types';
 
 export default function AdminAnalyticsPage() {
-  const chartData = [
-    { label: 'Пн', value: 40, sum: '12,400' },
-    { label: 'Вт', value: 55, sum: '16,200' },
-    { label: 'Ср', value: 48, sum: '14,800' },
-    { label: 'Чт', value: 70, sum: '21,000' },
-    { label: 'Пт', value: 85, sum: '28,400' },
-    { label: 'Сб', value: 95, sum: '32,500' },
-    { label: 'Вс', value: 80, sum: '26,800' }
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch orders from the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (data) setOrders(data);
+      setLoading(false);
+    };
+
+    fetchData();
+
+    // Subscribe to new orders for real-time analytics updates
+    const channel = supabase.channel('admin-analytics')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // 1. Calculate Weekly Revenue Chart
+  const daysOfWeek = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  // Create empty bins for the last 7 days
+  const chartDataBins = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return {
+      dateStr: d.toDateString(),
+      label: daysOfWeek[d.getDay()],
+      value: 0, // Will be percentage for height
+      sum: 0,
+      rawSum: 0
+    };
+  });
+
+  orders.forEach(order => {
+    const orderDate = new Date(order.created_at).toDateString();
+    const bin = chartDataBins.find(b => b.dateStr === orderDate);
+    if (bin) {
+      bin.rawSum += order.total;
+    }
+  });
+
+  const maxDailyRevenue = Math.max(...chartDataBins.map(b => b.rawSum), 1); // prevent division by zero
+  const totalWeeklyRevenue = chartDataBins.reduce((acc, curr) => acc + curr.rawSum, 0);
+
+  const chartData = chartDataBins.map(bin => ({
+    label: bin.label,
+    value: (bin.rawSum / maxDailyRevenue) * 100, // percentage for height
+    sum: bin.rawSum.toLocaleString()
+  }));
+
+  // 2. Calculate Category Breakdown
+  const categoryCounts: Record<string, number> = {
+    'shaurma': 0,
+    'shashlyk': 0,
+    'hotdog': 0,
+    'pita': 0,
+    'drinks': 0,
+    'combo': 0
+  };
+
+  const categoryNames: Record<string, string> = {
+    'shaurma': 'Шаурма',
+    'shashlyk': 'Шашлык',
+    'hotdog': 'Хот-доги',
+    'pita': 'Пита',
+    'drinks': 'Напитки & Другое',
+    'combo': 'Комбо'
+  };
+
+  let totalItemsCount = 0;
+
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      // We don't save category in orderItem natively, so we might need a fallback.
+      // But typically, we can guess by name if category wasn't saved, or ideally it should be saved.
+      // Assuming item might have category if we extended it, otherwise fallback parsing.
+      const cat = (item as any).category || 
+                  (item.name.toLowerCase().includes('шаурма') ? 'shaurma' : 
+                   item.name.toLowerCase().includes('шашлык') ? 'shashlyk' : 
+                   item.name.toLowerCase().includes('хот-дог') ? 'hotdog' : 'drinks');
+      
+      if (categoryCounts[cat] !== undefined) {
+         categoryCounts[cat] += item.qty;
+      } else {
+         categoryCounts['drinks'] += item.qty;
+      }
+      totalItemsCount += item.qty;
+    });
+  });
+
+  const categoryBreakdown = Object.entries(categoryCounts)
+    .filter(([_, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => ({
+      name: categoryNames[key] || key,
+      pct: totalItemsCount === 0 ? '0%' : `${Math.round((count / totalItemsCount) * 100)}%`,
+      count: `${count} шт`
+    }));
+
+  // 3. Peak Hours Breakdown
+  let lunchCount = 0; // 12-15
+  let dinnerCount = 0; // 18-21
+  let nightCount = 0; // 21-03
+  let otherCount = 0;
+
+  orders.forEach(order => {
+    const hour = new Date(order.created_at).getHours();
+    if (hour >= 12 && hour < 15) lunchCount++;
+    else if (hour >= 18 && hour < 21) dinnerCount++;
+    else if ((hour >= 21 && hour <= 23) || (hour >= 0 && hour < 3)) nightCount++;
+    else otherCount++;
+  });
+
+  const maxPeak = Math.max(lunchCount, dinnerCount, nightCount, 1);
+
+  const peakHours = [
+    { time: '12:00 - 15:00 (Обед)', value: 'Высокая нагрузка 🔥', pct: `${(lunchCount / maxPeak) * 100}%`, color: 'bg-primary-red' },
+    { time: '18:00 - 21:00 (Ужин)', value: 'Максимальный пик 🚀', pct: `${(dinnerCount / maxPeak) * 100}%`, color: 'bg-primary-red' },
+    { time: '21:00 - 03:00 (Ночь)', value: 'Умеренный спрос 🌙', pct: `${(nightCount / maxPeak) * 100}%`, color: 'bg-brand-yellow' }
   ];
 
   return (
@@ -30,26 +158,26 @@ export default function AdminAnalyticsPage() {
           <div className="flex justify-between items-center border-b border-gray-100 pb-4">
             <div>
               <h2 className="font-display font-bold text-lg text-brand-dark flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-primary-red" /> Выручка за неделю
+                <TrendingUp className="w-5 h-5 mr-2 text-primary-red" /> Выручка за 7 дней
               </h2>
-              <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Всего: 152,100 ₽</p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Всего: {totalWeeklyRevenue.toLocaleString()} ₽</p>
             </div>
             <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-3 py-1.5 rounded-full flex items-center">
-              +14.8% к пров. неделе
+              Обновлено
             </span>
           </div>
 
-          {/* Graph visual representation using simple CSS grid */}
+          {/* Graph visual representation */}
           <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 pt-4 border-b border-gray-100">
             {chartData.map((data, idx) => (
-              <div key={idx} className="flex-1 flex flex-col items-center space-y-2 group cursor-pointer">
+              <div key={idx} className="flex-1 flex flex-col items-center space-y-2 group cursor-pointer h-full justify-end">
                 {/* Value popup */}
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-brand-dark text-white text-[9px] font-bold px-2 py-1 rounded shadow absolute -translate-y-8 pointer-events-none select-none">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-brand-dark text-white text-[9px] font-bold px-2 py-1 rounded shadow absolute -translate-y-8 pointer-events-none select-none z-10">
                   {data.sum} ₽
                 </div>
                 {/* Bar */}
                 <div
-                  className="w-full bg-primary-red/80 hover:bg-primary-red rounded-t-xl transition-all duration-500"
+                  className="w-full bg-primary-red/80 hover:bg-primary-red rounded-t-xl transition-all duration-500 min-h-[4px]"
                   style={{ height: `${data.value}%` }}
                 ></div>
                 {/* Label */}
@@ -70,22 +198,21 @@ export default function AdminAnalyticsPage() {
               🎯 Доли категорий
             </h2>
             <div className="space-y-4">
-              {[
-                { name: 'Шаурма', pct: '62%', count: '310 шт' },
-                { name: 'Шашлык', pct: '18%', count: '90 шт' },
-                { name: 'Хот-доги', pct: '10%', count: '50 шт' },
-                { name: 'Напитки & Другое', pct: '10%', count: '50 шт' }
-              ].map((category, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold text-brand-dark">
-                    <span>{category.name} ({category.pct})</span>
-                    <span className="text-gray-400 font-semibold">{category.count}</span>
+              {categoryBreakdown.length === 0 ? (
+                <div className="py-4 text-center text-gray-400 text-sm font-semibold">Нет продаж за период</div>
+              ) : (
+                categoryBreakdown.map((category, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-brand-dark">
+                      <span>{category.name} ({category.pct})</span>
+                      <span className="text-gray-400 font-semibold">{category.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-150 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-brand-yellow h-full rounded-full transition-all duration-1000" style={{ width: category.pct }}></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-150 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-brand-yellow h-full rounded-full" style={{ width: category.pct }}></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -95,18 +222,14 @@ export default function AdminAnalyticsPage() {
               🕒 Пиковые часы активности
             </h2>
             <div className="space-y-4">
-              {[
-                { time: '12:00 - 15:00 (Обед)', value: 'Высокая нагрузка 🔥', pct: '100%', color: 'bg-primary-red' },
-                { time: '18:00 - 21:00 (Ужин)', value: 'Максимальный пик 🚀', pct: '85%', color: 'bg-primary-red' },
-                { time: '21:00 - 03:00 (Ночь)', value: 'Умеренный спрос 🌙', pct: '45%', color: 'bg-brand-yellow' }
-              ].map((time, idx) => (
+              {peakHours.map((time, idx) => (
                 <div key={idx} className="space-y-1.5">
                   <div className="flex justify-between text-xs font-bold text-brand-dark">
                     <span>{time.time}</span>
-                    <span className="text-gray-400 font-semibold">{time.value}</span>
+                    <span className="text-gray-400 font-semibold">{orders.length > 0 ? time.value : 'Нет данных'}</span>
                   </div>
                   <div className="w-full bg-gray-150 h-2.5 rounded-full overflow-hidden">
-                    <div className={`${time.color} h-full rounded-full`} style={{ width: time.pct }}></div>
+                    <div className={`${time.color} h-full rounded-full transition-all duration-1000`} style={{ width: orders.length > 0 ? time.pct : '0%' }}></div>
                   </div>
                 </div>
               ))}

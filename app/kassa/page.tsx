@@ -6,12 +6,23 @@ import { ArrowLeft, Clock, Phone, User, CheckCircle2, Play, PackageCheck, AlertC
 import { useOrders } from '../../hooks/useOrders';
 import { Order } from '../../types';
 import toast from 'react-hot-toast';
+import { createClient } from '../../utils/supabase/client';
 
 export default function KassaPage() {
   const { orders, fetchOrders, updateOrderStatus, subscribeToOrders, loading } = useOrders();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    const checkAdmin = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email === 'nurbekburkhanoff0@gmail.com') {
+        setIsAdmin(true);
+      }
+    };
+    checkAdmin();
+
     // Initial fetch
     fetchOrders().then(data => setActiveOrders(data));
 
@@ -151,11 +162,15 @@ export default function KassaPage() {
           </Link>
           <span className="font-display font-black tracking-widest text-lg flex items-center">
             <ShieldAlert className="w-5 h-5 text-brand-yellow mr-2 animate-pulse" />
-            <span>ЭЛЕКТРОННАЯ КАССА (REALTIME + POLLING)</span>
+            <span>ЭЛЕКТРОННАЯ КАССА</span>
           </span>
-          <Link href="/admin" className="text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/10 text-white">
-            Админ Панель
-          </Link>
+          {isAdmin ? (
+            <Link href="/admin" className="text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/10 text-white">
+              Админ Панель
+            </Link>
+          ) : (
+            <div className="w-[100px]"></div>
+          )}
         </div>
       </header>
 

@@ -1,21 +1,88 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { DollarSign, ShoppingBag, Users, Star, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { Order, UserProfile, OrderItem } from '../../types';
 
 export default function AdminDashboard() {
-  const stats = [
-    { label: 'Выручка сегодня', value: '18,450 ₽', change: '+12.5%', icon: DollarSign, color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Заказов сегодня', value: '48', change: '+8.3%', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50' },
-    { label: 'Новых клиентов', value: '14', change: '+18.2%', icon: Users, color: 'text-purple-600 bg-purple-50' },
-    { label: 'Средний рейтинг', value: '4.8 ★', change: '+0.1%', icon: Star, color: 'text-amber-600 bg-amber-50' }
-  ];
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const recentOrders = [
-    { num: '#12', time: '10 минут назад', sum: '640 ₽', status: 'cooking', label: 'Готовится' },
-    { num: '#11', time: '25 минут назад', sum: '320 ₽', status: 'ready', label: 'Готов' },
-    { num: '#10', time: '40 минут назад', sum: '1,280 ₽', status: 'done', label: 'Выдан' }
+  useEffect(() => {
+    const fetchData = async () => {
+      const [ordersRes, usersRes] = await Promise.all([
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('users').select('*')
+      ]);
+
+      if (ordersRes.data) setOrders(ordersRes.data);
+      if (usersRes.data) setUsers(usersRes.data);
+      setLoading(false);
+    };
+
+    fetchData();
+
+    // Subscribe to new orders for real-time dashboard updates
+    const channel = supabase.channel('admin-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Helpers to calculate today's metrics
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const todaysOrders = orders.filter(o => new Date(o.created_at) >= today);
+  const revenueToday = todaysOrders.reduce((sum, o) => sum + o.total, 0);
+  const newClientsToday = users.filter(u => new Date(u.created_at) >= today).length;
+
+  // Recent Orders (Top 3)
+  const recentOrders = orders.slice(0, 3).map(o => {
+    const diff = Math.floor((new Date().getTime() - new Date(o.created_at).getTime()) / 60000);
+    const timeStr = diff === 0 ? 'Только что' : `${diff} минут назад`;
+    
+    let label = 'Новый';
+    if (o.status === 'cooking') label = 'Готовится';
+    if (o.status === 'ready') label = 'Готов';
+    if (o.status === 'done') label = 'Выдан';
+    
+    return { num: `#${o.order_number || o.id.substring(0,4)}`, time: timeStr, sum: `${o.total} ₽`, status: o.status, label };
+  });
+
+  // Calculate Popular Today
+  const itemCounts: Record<string, number> = {};
+  todaysOrders.forEach(order => {
+    order.items.forEach(item => {
+      itemCounts[item.name] = (itemCounts[item.name] || 0) + item.qty;
+    });
+  });
+
+  const sortedItems = Object.entries(itemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  const totalItemsSold = sortedItems.reduce((acc, curr) => acc + curr[1], 0);
+
+  const popularToday = sortedItems.map(([name, count]) => ({
+    name,
+    sales: `${count} шт`,
+    pct: totalItemsSold === 0 ? '0%' : `${Math.round((count / totalItemsSold) * 100)}%`
+  }));
+
+  const stats = [
+    { label: 'Выручка сегодня', value: `${revenueToday.toLocaleString()} ₽`, change: loading ? '...' : 'Сегодня', icon: DollarSign, color: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Заказов сегодня', value: todaysOrders.length.toString(), change: loading ? '...' : 'Сегодня', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50' },
+    { label: 'Новых клиентов', value: newClientsToday.toString(), change: loading ? '...' : 'Сегодня', icon: Users, color: 'text-purple-600 bg-purple-50' },
+    { label: 'Средний рейтинг', value: '4.8 ★', change: 'Стабильно', icon: Star, color: 'text-amber-600 bg-amber-50' }
   ];
 
   return (
@@ -65,24 +132,28 @@ export default function AdminDashboard() {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {recentOrders.map((ord, idx) => (
-                <div key={idx} className="py-4 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="font-display font-black text-sm text-brand-dark">Заказ {ord.num}</span>
-                    <span className="text-xs text-gray-400 font-medium block">{ord.time}</span>
+              {recentOrders.length === 0 ? (
+                 <div className="py-8 text-center text-gray-400 text-sm font-semibold">Пока нет заказов</div>
+              ) : (
+                recentOrders.map((ord, idx) => (
+                  <div key={idx} className="py-4 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="font-display font-black text-sm text-brand-dark">Заказ {ord.num}</span>
+                      <span className="text-xs text-gray-400 font-medium block">{ord.time}</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="font-display font-black text-sm text-brand-dark">{ord.sum}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                        ord.status === 'cooking' ? 'bg-amber-100 text-amber-800' :
+                        ord.status === 'ready' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {ord.label}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="font-display font-black text-sm text-brand-dark">{ord.sum}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                      ord.status === 'cooking' ? 'bg-amber-100 text-amber-800' :
-                      ord.status === 'ready' ? 'bg-emerald-100 text-emerald-800' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {ord.label}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -93,21 +164,21 @@ export default function AdminDashboard() {
             </h2>
 
             <div className="space-y-4">
-              {[
-                { name: 'Шаурма Классик', sales: '24 шт', pct: '80%' },
-                { name: 'Шаурма Сырная', sales: '14 шт', pct: '55%' },
-                { name: 'Шашлык свинина', sales: '8 порц', pct: '35%' }
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold text-brand-dark">
-                    <span>{item.name}</span>
-                    <span className="text-primary-red">{item.sales}</span>
+              {popularToday.length === 0 ? (
+                <div className="py-4 text-center text-gray-400 text-sm font-semibold">Нет данных за сегодня</div>
+              ) : (
+                popularToday.map((item, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-brand-dark">
+                      <span>{item.name}</span>
+                      <span className="text-primary-red">{item.sales}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-primary-red h-full transition-all duration-1000" style={{ width: item.pct }}></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-primary-red h-full" style={{ width: item.pct }}></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 

@@ -192,7 +192,13 @@ export default function AdminMenuPage() {
               <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
                 {items.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50/50">
-                    <td className="p-4 pl-6 text-3xl select-none">{item.image}</td>
+                    <td className="p-4 pl-6">
+                      {item.image.startsWith('http') ? (
+                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl" />
+                      ) : (
+                        <span className="text-3xl select-none">{item.image}</span>
+                      )}
+                    </td>
                     <td className="p-4">
                       <span className="text-brand-dark block">{item.name}</span>
                       <span className="text-[10px] text-gray-400 block font-normal font-body mt-0.5 max-w-[250px] truncate">{item.description}</span>

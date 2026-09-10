@@ -53,7 +53,7 @@ export default function ReviewsSection() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="text-primary-red text-[10px] font-black uppercase tracking-widest bg-red-500/10 border border-primary-red/10 px-4 py-2 rounded-full">
+          <span className="inline-block text-primary-red text-[10px] font-black uppercase tracking-widest bg-red-500/10 border border-primary-red/10 px-4 py-2 rounded-full">
             Отзывы клиентов
           </span>
           <h2 className="font-display font-black text-3xl sm:text-4xl text-brand-dark uppercase tracking-tight">
